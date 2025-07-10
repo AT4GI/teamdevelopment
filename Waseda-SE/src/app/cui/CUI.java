@@ -13,10 +13,11 @@ import app.AppException;
 import app.checkin.CheckInRoomForm;
 import app.checkout.CheckOutRoomForm;
 import app.reservation.ReserveRoomForm;
+import app.cancel.CancelReservationForm; // 【追加】CancelReservationFormをインポート
 
 /**
  * CUI class for Hotel Reservation Systems
- * 
+ *
  */
 public class CUI {
 
@@ -37,6 +38,8 @@ public class CUI {
 				System.out.println("1: Reservation");
 				System.out.println("2: Check-in");
 				System.out.println("3: Check-out");
+				System.out.println("4: Cancel Reservation"); // 【追加】メニュー項目を追加
+				
 				System.out.println("9: End");
 				System.out.print("> ");
 
@@ -45,7 +48,7 @@ public class CUI {
 					selectMenu = Integer.parseInt(menu);
 				}
 				catch (NumberFormatException e) {
-					selectMenu = 4;
+					selectMenu = 5; // 【変更】無効なメニュー番号を変更
 				}
 
 				if (selectMenu == 9) {
@@ -61,6 +64,9 @@ public class CUI {
 						break;
 					case 3:
 						checkOutRoom();
+						break;
+					case 4: // 【追加】case 4を追加
+						cancelReservation();
 						break;
 				}
 			}
@@ -133,6 +139,25 @@ public class CUI {
 		checkoutRoomForm.checkOut();
 		System.out.println("Check-out has been completed.");
 	}
+
+	// 【追加】予約キャンセル処理を行うメソッド
+	private void cancelReservation() throws IOException, AppException {
+		System.out.println("Input reservation number");
+		System.out.print("> ");
+
+		String reservationNumber = reader.readLine();
+
+		if (reservationNumber == null || reservationNumber.length() == 0) {
+			System.out.println("Invalid reservation number");
+			return;
+		}
+
+		CancelReservationForm cancelReservationForm = new CancelReservationForm();
+		cancelReservationForm.setReservationNumber(reservationNumber);
+		cancelReservationForm.cancel();
+		System.out.println("Reservation has been canceled.");
+	}
+
 
 	public static void main(String[] args) throws Exception {
 		CUI cui = new CUI();
