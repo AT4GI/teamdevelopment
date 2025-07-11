@@ -32,12 +32,12 @@ public class RoomSqlDao implements RoomDao {
 	/**
 	 * @see domain.room.RoomDao#getRooms()
 	 */
-	public List getRooms() throws RoomException {
+	public List<String> getRooms() throws RoomException {
 		StringBuffer sql = new StringBuffer();
 		Statement statement = null;
 		ResultSet resultSet = null;
 		Connection connection = null;
-		List roomList = new ArrayList();
+		List<String> roomList = new ArrayList<>();
 		try {
 			connection = getConnection();
 			statement = connection.createStatement();
@@ -99,12 +99,12 @@ public class RoomSqlDao implements RoomDao {
 	/**
 	 * @see domain.room.RoomDao#getEmptyRooms()
 	 */
-	public List getEmptyRooms() throws RoomException {
+	public List<Room> getEmptyRooms() throws RoomException {
 		StringBuffer sql = new StringBuffer();
 		Statement statement = null;
 		ResultSet resultSet = null;
 		Connection connection = null;
-		List emptyRoomList = new ArrayList();
+		List<Room> emptyRoomList = new ArrayList<>();
 		try {
 			connection = getConnection();
 			statement = connection.createStatement();
