@@ -1,4 +1,6 @@
 import java.util.*;
+import java.io.*;
+import java.text.*;
 
 // ============================
 // Date Entity
@@ -90,13 +92,6 @@ class Reservation {
   public boolean isCheckedIn() { return checkedIn; }
   public void setCheckedOut(boolean checkedOut) { this.checkedOut = checkedOut; }
   public void setCheckedIn(boolean checkedIn) { this.checkedIn = checkedIn; }
-
-  public boolean matches(String roomType, String checkinDate, String checkoutDate, int roomNumber) {
-    return this.roomType.equalsIgnoreCase(roomType) &&
-           this.checkinDate.equals(checkinDate) &&
-           this.checkoutDate.equals(checkoutDate) &&
-           this.roomNumber == roomNumber;
-  }
 }
 
 // ============================
@@ -105,17 +100,28 @@ class Reservation {
 class ReservationControl {
   private List<Room> vacantRooms;
   private Map<Integer, Reservation> reservations;
+  private final String logFilePath = "reservation.log";
 
   public ReservationControl() {
     this.vacantRooms = new ArrayList<>();
     this.reservations = new HashMap<>();
   }
 
-  public List<Room> findVacantRoom(String checkinDate, String checkoutDate, int price, String type) {
+  private void log(String message) {
+    try (FileWriter fw = new FileWriter(logFilePath, true);
+         BufferedWriter bw = new BufferedWriter(fw);
+         PrintWriter out = new PrintWriter(bw)) {
+      out.println(new Date() + " - " + message);
+    } catch (IOException e) {
+      System.out.println("ログファイルに書き込みできません: " + e.getMessage());
+    }
+  }
+
+  public List<Room> findVacantRoom(String checkinDate, String checkoutDate, String type) {
     List<Room> matchedRooms = new ArrayList<>();
     for (Room room : vacantRooms) {
       for (RoomClass rc : room.getRoomClasses()) {
-        if (rc.getType().equalsIgnoreCase(type) && rc.getPrice() <= price && rc.getVacancy() > 0) {
+        if (rc.getType().equalsIgnoreCase(type) && rc.getVacancy() > 0) {
           matchedRooms.add(room);
           break;
         }
@@ -132,6 +138,7 @@ class ReservationControl {
             rc.decrementVacancy();
             Reservation r = new Reservation(roomNumber, type, checkin, checkout);
             reservations.put(r.getReservationId(), r);
+            log("予約完了: 予約番号=" + r.getReservationId() + ", 部屋番号=" + roomNumber + ", 種別=" + type + ", チェックイン=" + checkin + ", チェックアウト=" + checkout);
             return r.getReservationId();
           }
         }
@@ -140,27 +147,31 @@ class ReservationControl {
     return -1;
   }
 
-  public void checkIn(int reservationId, String type, String checkin, String checkout, int roomNumber) {
+  public void checkIn(int reservationId) {
     if (reservations.containsKey(reservationId)) {
       Reservation r = reservations.get(reservationId);
       if (r.isCheckedIn()) {
         System.out.println("すでにチェックイン済みです。");
-      } else if (r.matches(type, checkin, checkout, roomNumber)) {
-        r.setCheckedIn(true);
-        System.out.println("チェックイン完了しました。");
       } else {
-        System.out.println("入力情報が一致しません。チェックインできません。");
+        r.setCheckedIn(true);
+        log("チェックイン完了: 予約番号=" + reservationId + ", 部屋番号=" + r.getRoomNumber());
+        System.out.println("チェックイン完了しました。部屋番号: " + r.getRoomNumber());
       }
     } else {
       System.out.println("その予約番号は存在しません。");
     }
   }
 
-  public void checkOut(int reservationId) {
+  public void checkOut(int reservationId, int roomNumber) {
     if (reservations.containsKey(reservationId)) {
       Reservation r = reservations.get(reservationId);
+      if (r.getRoomNumber() != roomNumber) {
+        System.out.println("部屋番号が一致しません。");
+        return;
+      }
       if (!r.isCheckedOut()) {
         r.setCheckedOut(true);
+        log("チェックアウト完了: 予約番号=" + reservationId);
         System.out.println("チェックアウトが完了しました。");
       } else {
         System.out.println("すでにチェックアウト済みです。");
@@ -170,12 +181,12 @@ class ReservationControl {
     }
   }
 
-  public void cancelReservation(int reservationId, String type, String checkin, String checkout, int roomNumber) {
+  public void cancelReservation(int reservationId, String type, String checkin, String checkout) {
     if (reservations.containsKey(reservationId)) {
       Reservation r = reservations.get(reservationId);
-      if (r.matches(type, checkin, checkout, roomNumber)) {
+      if (r.getRoomType().equalsIgnoreCase(type) && r.getCheckinDate().equals(checkin) && r.getCheckoutDate().equals(checkout)) {
         for (Room room : vacantRooms) {
-          if (room.getRoomNumber() == roomNumber) {
+          if (room.getRoomNumber() == r.getRoomNumber()) {
             for (RoomClass rc : room.getRoomClasses()) {
               if (rc.getType().equalsIgnoreCase(type)) {
                 rc.incrementVacancy();
@@ -185,6 +196,7 @@ class ReservationControl {
           }
         }
         reservations.remove(reservationId);
+        log("予約キャンセル: 予約番号=" + reservationId);
         System.out.println("予約キャンセルが完了しました。");
       } else {
         System.out.println("入力情報が一致しません。キャンセルできません。");
@@ -196,6 +208,17 @@ class ReservationControl {
 
   public void addVacantRoom(Room room) {
     vacantRooms.add(room);
+  }
+
+  public boolean isValidDateFormat(String dateStr) {
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+    sdf.setLenient(false);
+    try {
+      sdf.parse(dateStr);
+      return true;
+    } catch (ParseException e) {
+      return false;
+    }
   }
 }
 
@@ -221,7 +244,7 @@ class ManagementControl {
 }
 
 // ============================
-// Main
+// Main Entry Point
 // ============================
 public class HotelReservationSystem {
   public static void main(String[] args) {
@@ -240,48 +263,47 @@ public class HotelReservationSystem {
       String input = scanner.nextLine();
 
       if (input.equals("1")) {
-        System.out.println("チェックイン日 (YYYY/MM/DD):");
-        String checkin = scanner.nextLine();
-        System.out.println("チェックアウト日 (YYYY/MM/DD):");
-        String checkout = scanner.nextLine();
+        String checkin, checkout;
+        while (true) {
+          System.out.println("チェックイン日 (YYYY/MM/DD):");
+          checkin = scanner.nextLine();
+          if (reservation.isValidDateFormat(checkin)) break;
+          System.out.println("形式が正しくありません。再入力してください。");
+        }
+        while (true) {
+          System.out.println("チェックアウト日 (YYYY/MM/DD):");
+          checkout = scanner.nextLine();
+          if (reservation.isValidDateFormat(checkout)) break;
+          System.out.println("形式が正しくありません。再入力してください。");
+        }
         System.out.println("部屋タイプ (Single/Double/Suite):");
         String type = scanner.nextLine();
-        System.out.println("価格上限:");
-        int price = Integer.parseInt(scanner.nextLine());
 
-        List<Room> candidates = reservation.findVacantRoom(checkin, checkout, price, type);
+        List<Room> candidates = reservation.findVacantRoom(checkin, checkout, type);
         if (candidates.isEmpty()) {
           System.out.println("該当する空室がありません。");
         } else {
-          System.out.println("予約可能な部屋:");
-          for (Room r : candidates) {
-            System.out.println("部屋番号: " + r.getRoomNumber());
-          }
-          System.out.println("予約する部屋番号を入力:");
-          int roomNo = Integer.parseInt(scanner.nextLine());
-          int resId = reservation.reserveRoom(roomNo, type, checkin, checkout);
+          int selectedRoomNo = candidates.get(0).getRoomNumber();
+          int resId = reservation.reserveRoom(selectedRoomNo, type, checkin, checkout);
           if (resId != -1) {
             System.out.println("予約完了、予約番号: " + resId);
           } else {
             System.out.println("予約に失敗しました。");
           }
         }
+
       } else if (input.equals("2")) {
         System.out.println("予約番号を入力:");
         int resId = Integer.parseInt(scanner.nextLine());
-        System.out.println("チェックイン日 (YYYY/MM/DD):");
-        String checkin = scanner.nextLine();
-        System.out.println("チェックアウト日 (YYYY/MM/DD):");
-        String checkout = scanner.nextLine();
-        System.out.println("部屋タイプ (Single/Double/Suite):");
-        String type = scanner.nextLine();
-        System.out.println("部屋番号:");
-        int roomNo = Integer.parseInt(scanner.nextLine());
-        reservation.checkIn(resId, type, checkin, checkout, roomNo);
+        reservation.checkIn(resId);
+
       } else if (input.equals("3")) {
         System.out.println("予約番号を入力:");
         int resId = Integer.parseInt(scanner.nextLine());
-        reservation.checkOut(resId);
+        System.out.println("部屋番号:");
+        int roomNo = Integer.parseInt(scanner.nextLine());
+        reservation.checkOut(resId, roomNo);
+
       } else if (input.equals("4")) {
         System.out.println("予約番号を入力:");
         int resId = Integer.parseInt(scanner.nextLine());
@@ -291,9 +313,8 @@ public class HotelReservationSystem {
         String checkout = scanner.nextLine();
         System.out.println("部屋タイプ:");
         String type = scanner.nextLine();
-        System.out.println("部屋番号:");
-        int roomNo = Integer.parseInt(scanner.nextLine());
-        reservation.cancelReservation(resId, type, checkin, checkout, roomNo);
+        reservation.cancelReservation(resId, type, checkin, checkout);
+
       } else if (input.equals("5")) {
         System.out.println("終了します。");
         break;
