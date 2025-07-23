@@ -29,7 +29,7 @@ public class CheckInControl {
                 // (本来は予約を元に戻す処理が必要)
                 return;
             }
-            room.setStayingDate(reservation.getStayingDate());
+            room.setStayingDate(reservation.getCheckinDate()); // ★ここを修正しました★
             roomDao.update(room);
 
             System.out.println("チェックインが完了しました。お部屋番号は " + room.getRoomNumber() + " です。");

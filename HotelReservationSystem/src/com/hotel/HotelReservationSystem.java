@@ -1,3 +1,4 @@
+// ファイルの中身をこれで完全に置き換えてください
 package com.hotel;
 
 import java.util.Scanner;
@@ -17,13 +18,22 @@ public class HotelReservationSystem {
 
       if (input.equals("1")) {
         System.out.println("チェックイン日 (YYYY/MM/DD):");
-        String dateStr = scanner.nextLine();
-        Date stayingDate = DateUtil.convertToDate(dateStr);
-        if (stayingDate == null) {
-            System.out.println("日付の形式が正しくありません。");
+        String checkinStr = scanner.nextLine();
+        Date checkinDate = DateUtil.convertToDate(checkinStr);
+
+        System.out.println("チェックアウト日 (YYYY/MM/DD):");
+        String checkoutStr = scanner.nextLine();
+        Date checkoutDate = DateUtil.convertToDate(checkoutStr);
+
+        System.out.println("部屋タイプ (Single/Double/Suite):");
+        String roomType = scanner.nextLine();
+
+        if (checkinDate == null || checkoutDate == null || roomType.isEmpty()) {
+            System.out.println("入力が正しくありません。");
             continue;
         }
-        String resId = reservationControl.reserveRoom(stayingDate);
+
+        String resId = reservationControl.reserveRoom(checkinDate, checkoutDate, roomType);
         if (resId != null) {
           System.out.println("予約番号: " + resId);
         }

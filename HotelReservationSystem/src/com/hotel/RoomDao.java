@@ -50,4 +50,25 @@ public class RoomDao {
             DBUtil.close(null, pstmt, con);
         }
     }
+    
+    // 指定された部屋タイプの総部屋数を数える
+    public int countRoomsByType(String roomType) throws SQLException {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        int count = 0;
+        try {
+            con = DBUtil.getConnection();
+            String sql = "SELECT COUNT(*) AS room_count FROM ROOM WHERE ROOM_TYPE = ?";
+            pstmt = con.prepareStatement(sql);
+            pstmt.setString(1, roomType.toUpperCase());
+            rs = pstmt.executeQuery();
+            if (rs.next()) {
+                count = rs.getInt("room_count");
+            }
+        } finally {
+            DBUtil.close(rs, pstmt, con);
+        }
+        return count;
+    }
 }
